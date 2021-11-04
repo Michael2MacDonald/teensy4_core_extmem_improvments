@@ -2,7 +2,7 @@
 
 Added more EXTRAM options and compatible devices
 
-### NOTE: THIS HAS NOT BEEN TESTED. It might not work as advertized. It might not work at all. IDK. I am planning on testing it but it might be a while.
+### NOTE: THIS HAS NOT BEEN TESTED. It might not work as advertized. It might not work at all. IDK. I am planning on testing it but it might be a while. If anyone tests it or something then please tell me so I know the results!
 
 - Added support for AS3008204, AS3004204, AS3001204 MRAM chips
 - Built to be scalable easy to add more compatible chips
