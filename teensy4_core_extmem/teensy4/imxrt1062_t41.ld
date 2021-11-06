@@ -1,13 +1,19 @@
 /** 
  * CONVERSION:
- * 1 KByte = 1024 Bytes = 0x400
- * 1 Mbit = 128 KBytes = 128000 Bytes = 0x1F400
- * 4 Mbit = 512 KBytes = 512000 Bytes = 0x7D000
- * 1 Mbyte = 1024 KBytes = 1048576 Bytes = 0x100000
- * 2 Mbytes = 2048 KBytes = 2097152 Bytes = 0x200000
- * 4 Mbytes = 4096 KBytes = 4194304 Bytes = 0x400000
- * 8 Mbytes = 8192 KBytes = 8388608 Bytes = 0x800000
- * 16 Mbytes = 16384 KBytes = 16777216 Bytes = 0x1000000
+ * All conversions are done in binary; bit, Kibibit, Mebibit, Byte, KibiByte, MebiByte;
+ * Bytes To Bytes:    Divide by 1024 to move to a larger unit (KibiByte->MebiByte) or multiply by 1024 to move to a smaller unit (MebiByte->KibiByte) [1024 = 0x400]
+ * Bits To Bits:      Divide by 1024 to move to a larger unit (Kibibit->Mebibit) or multiply by 1024 to move to a smaller unit (Mebibit->Kibibit) [1024 = 0x400]
+ * Kibibits To Bytes: Multiply by 128 to move from Kibibits to Bytes or divide by 128 to move from Bytes to Kibibits [128 = 0x80]
+ * 	128 Kbit = 0.015625 MBytes = 16 KBytes    = 0x10 KBytes   = 16384 Bytes    = 0x4000 Bytes
+ * 	256 Kbit = 0.03125  MBytes = 32 KBytes    = 0x20 KBytes   = 32768 Bytes    = 0x8000 Bytes
+ * 	1 Mbit   = 0.125 MBytes    = 128 KBytes   = 0x80 KBytes   = 131072 Bytes   = 0x20000 Bytes
+ * 	2 Mbit   = 0.250 MBytes    = 256 KBytes   = 0x100 KBytes  = 262144 Bytes   = 0x40000 Bytes
+ * 	4 Mbit   = 0.500 MBytes    = 512 KBytes   = 0x200 KBytes  = 524288 Bytes   = 0x80000 Bytes
+ * 	8 Mbit   = 1 MByte         = 1024 KBytes  = 0x400 KBytes  = 1048576 Bytes  = 0x100000 Bytes
+ * 	16 Mbit  = 2 MBytes        = 2048 KBytes  = 0x800 KBytes  = 2097152 Bytes  = 0x200000 Bytes
+ *		32 Mbit  = 4 MBytes        = 4096 KBytes  = 0x1000 KBytes = 4194304 Bytes  = 0x400000 Bytes
+ *		64 Mbit  = 8 MBytes        = 8192 KBytes  = 0x2000 KBytes = 8388608 Bytes  = 0x800000 Bytes
+ * 	128 Mbit = 16 MBytes       = 16384 KBytes = 0x4000 KBytes = 16777216 Bytes = 0x1000000 Bytes
  */
 __ERAM_ORIGIN = 0x70000000;
 /* __ERAM1_LENGTH  = DEFINED(__ERAM1_LENGTH) ? __ERAM1_LENGTH  : 8192K; */
@@ -127,6 +133,9 @@ SECTIONS
 
 	_extram_start = ADDR(.bss.extram);
 	_extram_end = ADDR(.bss.extram) + SIZEOF(.bss.extram);
+
+	_extram2_start = ADDR(.bss.extram2);
+	_extram2_end = ADDR(.bss.extram2) + SIZEOF(.bss.extram2);
 
 	_itcm_block_count = (SIZEOF(.text.itcm) + SIZEOF(.ARM.exidx) + 0x7FFF) >> 15;
 	_flexram_bank_config = 0xAAAAAAAA | ((1 << (_itcm_block_count * 2)) - 1);

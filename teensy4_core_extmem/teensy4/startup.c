@@ -20,6 +20,9 @@ extern unsigned long _flexram_bank_config;
 extern unsigned long _estack;
 extern unsigned long _extram_start;
 extern unsigned long _extram_end;
+extern unsigned long _extram2_start;
+extern unsigned long _extram2_end;
+extern unsigned long* __ERAM2_LENGTH;
 
 __attribute__ ((used, aligned(1024)))
 void (* volatile _VectorsRam[NVIC_NUM_INTERRUPTS+16])(void);
@@ -42,9 +45,12 @@ extern unsigned long rtc_get(void);
 uint32_t set_arm_clock(uint32_t frequency); // clockspeed.c
 extern void __libc_init_array(void); // C++ standard library
 
-uint8_t external_psram_size = 0;
+uint8_t external_ram_size = 0;
+uint8_t external_ram1_size = 0;
+uint8_t external_ram2_size = 0;
 #ifdef ARDUINO_TEENSY41
 struct smalloc_pool extmem_smalloc_pool;
+struct smalloc_pool extmem2_smalloc_pool;
 #endif
 
 extern int main (void);
@@ -286,6 +292,8 @@ FLASHMEM void configure_cache(void)
 
 #ifdef ARDUINO_TEENSY41
 
+
+
 #define LUT0(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)))
 #define LUT1(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)) << 16)
 #define CMD_SDR         FLEXSPI_LUT_OPCODE_CMD_SDR
@@ -310,15 +318,25 @@ FLASHMEM void configure_cache(void)
  * CHEATSHEETS:
  * 
  * 	CONFIGURATION:
- * 	0 : Teensy PSRAM Chips (Default)
- * 	1 : Avalanche Technology Persistant SRAM AS3008204, AS3004204, AS3001204
- * 	3 : (Comming Soon) Cypress CY15B104QSN-108S (4Mbit/500KByte FRAM)
+ * 		0 : Teensy PSRAM Chips (Default)
+ * 		1 : Avalanche Technology Persistant SRAM AS3008204, AS3004204, AS3001204
+ * 		3 : (Comming Soon) Cypress CY15B104QSN-108S (4Mbit/500KByte FRAM)
  * 
  * 	CONVERSION:
- * 	1Mbyte = 1048576 Bytes = 0x100000
- * 	2Mbyte = 2097152 Bytes = 0x200000
- * 	4Mbyte = 4194304 Bytes = 0x400000
- * 	8Mbyte = 8388608 Bytes = 0x800000
+ * 	All conversions are done in binary; bit, Kibibit, Mebibit, Byte, KibiByte, MebiByte;
+ * 	Bytes To Bytes:    Divide by 1024 to move to a larger unit (KibiByte->MebiByte) or multiply by 1024 to move to a smaller unit (MebiByte->KibiByte) [1024 = 0x400]
+ * 	Bits To Bits:      Divide by 1024 to move to a larger unit (Kibibit->Mebibit) or multiply by 1024 to move to a smaller unit (Mebibit->Kibibit) [1024 = 0x400]
+ * 	Kibibits To Bytes: Multiply by 128 to move from Kibibits to Bytes or divide by 128 to move from Bytes to Kibibits [128 = 0x80]
+ * 		128 Kbit = 0.015625 MBytes = 16 KBytes    = 0x10 KBytes   = 16384 Bytes    = 0x4000 Bytes
+ * 		256 Kbit = 0.03125  MBytes = 32 KBytes    = 0x20 KBytes   = 32768 Bytes    = 0x8000 Bytes
+ * 		1 Mbit   = 0.125 MBytes    = 128 KBytes   = 0x80 KBytes   = 131072 Bytes   = 0x20000 Bytes
+ * 		2 Mbit   = 0.250 MBytes    = 256 KBytes   = 0x100 KBytes  = 262144 Bytes   = 0x40000 Bytes
+ * 		4 Mbit   = 0.500 MBytes    = 512 KBytes   = 0x200 KBytes  = 524288 Bytes   = 0x80000 Bytes
+ * 		8 Mbit   = 1 MByte         = 1024 KBytes  = 0x400 KBytes  = 1048576 Bytes  = 0x100000 Bytes
+ * 		16 Mbit  = 2 MBytes        = 2048 KBytes  = 0x800 KBytes  = 2097152 Bytes  = 0x200000 Bytes
+ *			32 Mbit  = 4 MBytes        = 4096 KBytes  = 0x1000 KBytes = 4194304 Bytes  = 0x400000 Bytes
+ *			64 Mbit  = 8 MBytes        = 8192 KBytes  = 0x2000 KBytes = 8388608 Bytes  = 0x800000 Bytes
+ * 		128 Mbit = 16 MBytes       = 16384 KBytes = 0x4000 KBytes = 16777216 Bytes = 0x1000000 Bytes
  */
 
 // #if RAM_MODE == 0 && RAM1_CONF!=RAM2_CONF
@@ -524,13 +542,13 @@ FLASHMEM void configure_external_ram()
 	FLEXSPI2_IPTXFCR = (FLEXSPI_IPTXFCR & 0xFFFFFFC0) | FLEXSPI_IPTXFCR_CLRIPTXF;
 
 	FLEXSPI2_INTEN = 0;
-	FLEXSPI2_FLSHA1CR0 = 0x2000; // 8 MByte
+	FLEXSPI2_FLSHA1CR0 = RAM1_SIZE * 0x400; // MBytes to KBytes
 	FLEXSPI2_FLSHA1CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
 		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
 	FLEXSPI2_FLSHA1CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0) // AWRSEQID tells it what LUT entry to use to write to the ram
 		| FLEXSPI_FLSHCR2_ARDSEQID(5) | FLEXSPI_FLSHCR2_ARDSEQNUM(0); // ARDSEQID tells it what LUT entry to use to read from the ram
 
-	FLEXSPI2_FLSHA2CR0 = 0x2000; // 8 MByte
+	FLEXSPI2_FLSHA2CR0 = RAM2_SIZE * 0x400; // MBytes to KBytes
 	FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)
 		| FLEXSPI_FLSHCR1_TCSH(3) | FLEXSPI_FLSHCR1_TCSS(3);
 	FLEXSPI2_FLSHA2CR2 = FLEXSPI_FLSHCR2_AWRSEQID(6) | FLEXSPI_FLSHCR2_AWRSEQNUM(0) // AWRSEQID tells it what LUT entry to use to write to the ram
@@ -588,7 +606,7 @@ FLASHMEM void configure_external_ram()
 	FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
 
 	// cmd index 14 = disable 'Write Enable' (Chip 1)
-	FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS4, RAM1_WE) | LUT1(ADDR_SDR, PINS4, 24);
+	FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS4, RAM1_WE) | LUT1(ADDR_SDR, PINS4, 24); //
 	FLEXSPI2_LUT57 = LUT0(CMD_SDR, PINS4, RAM1_DWE) | LUT1(ADDR_SDR, PINS4, 24);
 	FLEXSPI2_LUT58 = LUT0(WRITE_SDR, PINS4, 1);
 	// cmd index 15 = disable 'Write Enable' (Chip 2)
@@ -596,7 +614,6 @@ FLASHMEM void configure_external_ram()
 	FLEXSPI2_LUT62 = LUT0(CMD_SDR, PINS4, RAM2_DWE) | LUT1(ADDR_SDR, PINS4, 24);
 	FLEXSPI2_LUT63 = LUT0(WRITE_SDR, PINS4, 1);
 
-	// ========== Added By Michael MacDonald ==========
 	// cmd index 7 = disable write enable for SRAM compatiblity (maybe just add a write enable command to cmd index 6?)
 	// FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS4, 0x06); // send 0x06 write enable
 	// FLEXSPI2_LUT29 = LUT0(CMD_SDR, PINS4, 0x87) | LUT1(ADDR_SDR, PINS4, 24); // Write Configuration Register 4 - WRCX 0x87
@@ -605,10 +622,6 @@ FLASHMEM void configure_external_ram()
 	// FLEXSPI2_LUT28 = LUT0(CMD_SDR, PINS4, 0x87) | LUT1(ADDR_SDR, PINS4, 24); // Write Configuration Register 4 - WRCX 0x87
 	// FLEXSPI2_LUT29 = LUT0(WRITE_SDR, PINS4, 1);
 	// cmd index 7 = disable write enable for SRAM compatiblity (maybe just add a write enable command to cmd index 6?)
-
-	// Notes:
-	// mram: AS3001204-0054X0ISAY
-	// ISEQID = Sequence Index in LUT for IP command
 
 	// Chapter 27 FlexSPI Controller page 1621 (https://www.pjrc.com/teensy/IMXRT1060RM_rev2.pdf)
 
@@ -627,24 +640,38 @@ FLASHMEM void configure_external_ram()
 		flexspi2_command(RAM2_RST, RAM2_ADDR); // reset (is this really necessary?)
 		if (flexspi2_ram_id(RAM2_ADDR, 2) == RAM2_ID) { // 0x5D = 01011101
 			flexspi2_command(RAM2_ENQPI, RAM2_ADDR); // enter quad mode
-			#if RAM2_HWE == 1	
+			#if RAM2_HWE == 1
 			flexspi2_ram_dwe(RAM2_ADDR+RAM2_DWEA, 15, RAM2_DWE); // Disable 'Write Enable'
 			#endif
 			// Two chips are present
-			external_psram_size = RAM1_SIZE + RAM2_SIZE;
+			external_ram_size = RAM1_SIZE + RAM2_SIZE; // For when only using one memory section
+			external_ram1_size = RAM1_SIZE; // For when using two memory sections
+			external_ram2_size = RAM2_SIZE; // For when using two memory sections
 		} else {
 			// One RAM chip is present
-			external_psram_size = RAM1_SIZE;
+			external_ram_size = RAM1_SIZE; // only using one memory section
 		}
 		// TODO: zero uninitialized EXTMEM variables
 		// TODO: copy from flash to initialize EXTMEM variables
-		sm_set_pool(&extmem_smalloc_pool, &_extram_end,
-			external_psram_size * 0x100000 -
-			((uint32_t)&_extram_end - (uint32_t)&_extram_start),
+		#if __ERAM2_LENGTH == 0 // If only one memory section is being used
+		sm_set_pool(&extmem_smalloc_pool, &_extram_end, // _extram_end is the end of user varuables not the end of the section
+			external_ram_size * 0x100000 - // MBytes -> Bytes
+			((uint32_t)&_extram_end - (uint32_t)&_extram_start), // Get size of unused ram
 			1, NULL);
+		#else // If both memory sections are being used
+		sm_set_pool(&extmem_smalloc_pool, &_extram_end, // _extram_end is the end of user varuables not the end of the section
+			external_ram1_size * 0x100000 - // MBytes -> Bytes
+			((uint32_t)&_extram_end - (uint32_t)&_extram_start), // Get size of unused ram
+			1, NULL);
+		sm_set_pool(&extmem2_smalloc_pool, &_extram2_end, // _extram_end is the end of user varuables not the end of the section
+			external_ram2_size * 0x100000 - // MBytes -> Bytes
+			((uint32_t)&_extram2_end - (uint32_t)&_extram2_start), // Get size of unused ram
+			1, NULL);
+		#endif
 	} else {
 		// No RAM
 		memset(&extmem_smalloc_pool, 0, sizeof(extmem_smalloc_pool));
+		memset(&extmem2_smalloc_pool, 0, sizeof(extmem2_smalloc_pool));
 	}
 }
 
